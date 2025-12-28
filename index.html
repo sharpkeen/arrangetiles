@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sliding Puzzle</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #222;
+      color: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .game-container {
+      background: #333;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+      text-align: center;
+      width: 320px;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 24px;
+      letter-spacing: 1px;
+    }
+
+    .info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      background: #111;
+      padding: 6px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    .tile {
+      width: 70px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+      border-radius: 8px;
+      background: #444;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.1s ease, background 0.1s ease;
+    }
+
+    .tile:hover {
+      transform: translateY(-1px);
+      background: #555;
+    }
+
+    .tile.empty {
+      background: #111;
+      cursor: default;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    button {
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: #ffb347;
+      color: #222;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #ffbf5f;
+    }
+
+    .message {
+      min-height: 20px;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    .message.win {
+      color: #7CFC00;
+      font-weight: bold;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1>Sliding Puzzle</h1>
+    <div class="info">
+      <div>Moves: <span id="moves">0</span></div>
+      <div>Time: <span id="time">0</span>s</div>
+    </div>
+    <div id="board" class="board"></div>
+    <div class="controls">
+      <button id="restart">🔁 Restart</button>
+      <small>Arrange 1–15 in order</small>
+    </div>
+    <div id="message" class="message"></div>
+  </div>
+
+  <script>
+    const boardEl = document.getElementById("board");
+    const movesEl = document.getElementById("moves");
+    const timeEl = document.getElementById("time");
+    const messageEl = document.getElementById("message");
+    const restartBtn = document.getElementById("restart");
+
+    const size = 4;              // 4x4 grid
+    let tiles = [];              // 1D array of length 16
+    let moveCount = 0;
+    let time = 0;
+    let timerId = null;
+    let gameWon = false;
+
+    // Initialize game
+    function initGame() {
+      moveCount = 0;
+      time = 0;
+      gameWon = false;
+      movesEl.textContent = moveCount;
+      timeEl.textContent = time;
+      messageEl.textContent = "";
+      messageEl.classList.remove("win");
+
+      if (timerId) {
+        clearInterval(timerId);
+      }
+      timerId = setInterval(() => {
+        if (!gameWon) {
+          time++;
+          timeEl.textContent = time;
+        }
+      }, 1000);
+
+      generateSolvableBoard();
+      renderBoard();
+    }
+
+    // Create a solvable shuffled board
+    function generateSolvableBoard() {
+      // Start from solved [1..15, 0]
+      tiles = Array.from({ length: size * size }, (_, i) =>
+        i === size * size - 1 ? 0 : i + 1
+      );
+
+      // Shuffle until solvable and not already solved
+      do {
+        shuffleArray(tiles);
+      } while (!isSolvable(tiles) || isSolved(tiles));
+    }
+
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    }
+
+    // Check solvability for 4x4 sliding puzzle
+    function isSolvable(arr) {
+      const inversionCount = getInversionCount(arr);
+      const blankIndex = arr.indexOf(0);
+      const blankRowFromBottom = size - Math.floor(blankIndex / size);
+
+      // For even grid width (4):
+      // solvable if:
+      //  - blank row from bottom is even and inversions are odd OR
+      //  - blank row from bottom is odd and inversions are even
+      if (blankRowFromBottom % 2 === 0) {
+        return inversionCount % 2 === 1;
+      } else {
+        return inversionCount % 2 === 0;
+      }
+    }
+
+    function getInversionCount(arr) {
+      const nums = arr.filter(n => n !== 0);
+      let count = 0;
+      for (let i = 0; i < nums.length; i++) {
+        for (let j = i + 1; j < nums.length; j++) {
+          if (nums[i] > nums[j]) count++;
+        }
+      }
+      return count;
+    }
+
+    function isSolved(arr) {
+      for (let i = 0; i < arr.length - 1; i++) {
+        if (arr[i] !== i + 1) return false;
+      }
+      return arr[arr.length - 1] === 0;
+    }
+
+    // Render board to DOM
+    function renderBoard() {
+      boardEl.innerHTML = "";
+      tiles.forEach((value, index) => {
+        const tile = document.createElement("div");
+        tile.classList.add("tile");
+        if (value === 0) {
+          tile.classList.add("empty");
+        } else {
+          tile.textContent = value;
+          tile.addEventListener("click", () => handleTileClick(index));
+        }
+        boardEl.appendChild(tile);
+      });
+    }
+
+    // Handle tile click
+    function handleTileClick(index) {
+      if (gameWon) return;
+
+      const emptyIndex = tiles.indexOf(0);
+
+      if (isAdjacent(index, emptyIndex)) {
+        // Swap tile with empty
+        [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+        moveCount++;
+        movesEl.textContent = moveCount;
+        renderBoard();
+
+        if (isSolved(tiles)) {
+          gameWon = true;
+          messageEl.textContent = `🎉 You solved it in ${moveCount} moves and ${time}s!`;
+          messageEl.classList.add("win");
+        }
+      }
+    }
+
+    // Check if two indices are neighbors (up/down/left/right)
+    function isAdjacent(i1, i2) {
+      const r1 = Math.floor(i1 / size);
+      const c1 = i1 % size;
+      const r2 = Math.floor(i2 / size);
+      const c2 = i2 % size;
+
+      const rowDiff = Math.abs(r1 - r2);
+      const colDiff = Math.abs(c1 - c2);
+
+      // must be next to each other, not diagonal
+      return (rowDiff + colDiff === 1);
+    }
+
+    restartBtn.addEventListener("click", initGame);
+
+    // Start the game when page loads
+    initGame();
+  </script>
+</body>
+</html>
