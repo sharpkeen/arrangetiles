@@ -51,9 +51,10 @@
       margin-bottom: 12px;
     }
 
+    /* 🔥 FIXED TILE SIZES TO FIT INSIDE GRID */
     .tile {
-      width: 70px;
-      height: 70px;
+      width: 100%;
+      aspect-ratio: 1 / 1;  /* maintains square shape */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -166,12 +167,10 @@
 
     // Create a solvable shuffled board
     function generateSolvableBoard() {
-      // Start from solved [1..15, 0]
       tiles = Array.from({ length: size * size }, (_, i) =>
         i === size * size - 1 ? 0 : i + 1
       );
 
-      // Shuffle until solvable and not already solved
       do {
         shuffleArray(tiles);
       } while (!isSolvable(tiles) || isSolved(tiles));
@@ -184,16 +183,12 @@
       }
     }
 
-    // Check solvability for 4x4 sliding puzzle
+    // Solvability check for 4x4
     function isSolvable(arr) {
       const inversionCount = getInversionCount(arr);
       const blankIndex = arr.indexOf(0);
       const blankRowFromBottom = size - Math.floor(blankIndex / size);
 
-      // For even grid width (4):
-      // solvable if:
-      //  - blank row from bottom is even and inversions are odd OR
-      //  - blank row from bottom is odd and inversions are even
       if (blankRowFromBottom % 2 === 0) {
         return inversionCount % 2 === 1;
       } else {
@@ -219,7 +214,7 @@
       return arr[arr.length - 1] === 0;
     }
 
-    // Render board to DOM
+    // Render board
     function renderBoard() {
       boardEl.innerHTML = "";
       tiles.forEach((value, index) => {
@@ -235,14 +230,12 @@
       });
     }
 
-    // Handle tile click
     function handleTileClick(index) {
       if (gameWon) return;
 
       const emptyIndex = tiles.indexOf(0);
 
       if (isAdjacent(index, emptyIndex)) {
-        // Swap tile with empty
         [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
         moveCount++;
         movesEl.textContent = moveCount;
@@ -256,23 +249,17 @@
       }
     }
 
-    // Check if two indices are neighbors (up/down/left/right)
     function isAdjacent(i1, i2) {
       const r1 = Math.floor(i1 / size);
       const c1 = i1 % size;
       const r2 = Math.floor(i2 / size);
       const c2 = i2 % size;
 
-      const rowDiff = Math.abs(r1 - r2);
-      const colDiff = Math.abs(c1 - c2);
-
-      // must be next to each other, not diagonal
-      return (rowDiff + colDiff === 1);
+      return (Math.abs(r1 - r2) + Math.abs(c1 - c2) === 1);
     }
 
     restartBtn.addEventListener("click", initGame);
 
-    // Start the game when page loads
     initGame();
   </script>
 </body>
